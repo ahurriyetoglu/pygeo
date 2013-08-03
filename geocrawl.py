@@ -29,7 +29,7 @@ import Queue
 class StdOutListener(StreamListener):
 	'''
 
-	Notes:
+	Notes: ali
 	1- define.db..., strptime*()
 
 	'''
