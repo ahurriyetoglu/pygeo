@@ -7,7 +7,12 @@ import operator
 import datetime
 import calendar
 import logging
+
 import time
+from time import mktime
+import datetime
+# from datetime import datetime
+
 import threading
 import urllib, urllib2
 import json
@@ -20,17 +25,29 @@ from ssl import SSLError
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from tweepy import Stream
-import datetime
+
+
 
 import Queue
 
+import argparse
 
+parser = argparse.ArgumentParser(description = "Crawl Geo-tagged Tweets and create Time series based on their Geo-location box")
+
+parser.add_argument("-b", type=int, default= 30, help="How big the longitute, latitude box should be, like 15, 30, 45 etc.") # Add controls to this. Should not be bigger than 180, should be able to divide 180 and 360 without remain part
+parser.add_argument("-m", type=int, default= 2, help="time serie minutes for a step")
+args = parser.parse_args()
+
+boxlen = args.b
+tseriemin = args.m
 
 class StdOutListener(StreamListener):
 	'''
 
 	Notes: ali
 	1- define.db..., strptime*()
+	2- write a mode, like just db or tweet collect!
+	3- How to check for dublicates.
 
 	'''
 
@@ -41,32 +58,78 @@ class StdOutListener(StreamListener):
 	    self.geononecount = 0
 	    self.db = dbnp
 
+	    self.starttime = datetime.datetime.utcnow() # This should be able to given as a parameter to calculate same thing from the DB for any start time.
+	    self.mytimedelta = datetime.timedelta(0, 60*tseriemin)
+	    self.timestep = 0
+
+	    self.tseriedict = {'starttime':self.starttime.isoformat(), 'tserimin':tseriemin}
+	    
+	    print('starttime & tseriemin:', self.starttime, tseriemin)
+
+	    self.currenttime = self.starttime
+	    self.nexttime = self.starttime + self.mytimedelta
+
+	    print('current & next time:', self.currenttime, self.nexttime)
+
+	    #datetime.datetime.now().time().isoformat() # 10:39:06.456711
+
 
 	def on_data(self, data): # from Manos
 		try:
 			tweeto = json.loads(data)
-			print('Not Parsed tweet:',data) # data is string type
+			# print('Not Parsed tweet:',data) # data is string type
 			print('Tweet parsed.')
 		except Exception:
 			print("Failed to parse tweet data..")
 			tweeto = None
+			exit()
 
-		print('Dir of Data:', type(data),dir(data))
-		# print('Geo of Data:', data.geo)
+		#print('Dir of Data:', type(data),dir(data))
 
 		if tweeto:
 			if tweeto.has_key('id') and tweeto.has_key("text") and tweeto.has_key("coordinates"):
-				print('Parsed Tweet:',tweeto)
+				#print('Parsed Tweet:',tweeto)
 				# print(dir(tweeto), tweeto.keys())
 				print("%s: %s" % (tweeto['user']['screen_name'].encode('UTF-8'), tweeto['text'].encode('UTF-8')))
 				if tweeto['coordinates'] != None:
 					ins_id = self.db.insert(tweeto)
 					print('Inserted with ID:', ins_id)
-					print ('Tweet count:', self.tweet_count, tweeto['coordinates'], type(tweeto['coordinates']), dir(tweeto['coordinates']),tweeto['coordinates']['type'], tweeto['coordinates']['coordinates'])
+					if tweeto['coordinates']['type'] == 'Point':
+						print('It is a POINT ...')
+						print('Coord[coord], Type & Value:', type(tweeto['coordinates']['coordinates']), tweeto['coordinates']['coordinates'])
+						print('Coord[coord][0] type & value:', type(tweeto['coordinates']['coordinates'][0]), type(tweeto['coordinates']['coordinates'][1]))
+						print(tweeto['coordinates']['coordinates'][0], tweeto['coordinates']['coordinates'][1])
+
+						lon = tweeto['coordinates']['coordinates'][0]
+						lat = tweeto['coordinates']['coordinates'][1]
+					else:
+						print('Not a Point:', tweeto['coordinates']['type'])
+
+					mystrptime = time.strptime(tweeto['created_at'],'%a %b %d %H:%M:%S +0000 %Y')					
+					dt = datetime.datetime.fromtimestamp(mktime(mystrptime))
+					print('tweet datetime type & value:', type(dt), dt)
+
+					lonlatbox = 'lon'+str(int(lon/boxlen))+'lat'+str(int(lat/boxlen))
+
+					if dt > self.nexttime:
+						self.currenttime = self.nexttime
+						self.nexttime = self.nexttime + self.mytimedelta
+						self.timestep += 1
+						print(self.tseriedict)
+						for k,v in self.tseriedict.items(): # for all boxes
+							if type(v) == list:
+								v.append(0) # add zero to all geo-boxes for the new time step
+
+
+					if lonlatbox not in self.tseriedict:
+						self.tseriedict[lonlatbox] = [0] * (self.timestep + 1) # 0 should be time serie point. 1 is addition for the length of the list.
+					
+					self.tseriedict[lonlatbox][self.timestep] += 1 # first 1 should be the time serie point. Second 1 distracted since to list index start from 0.
+					
+					# print ('Tweet count:', self.tweet_count, type(tweeto['coordinates']), dir(tweeto['coordinates']),tweeto['coordinates']['type'], tweeto['coordinates']['coordinates'])
 
 				else:
 					print('coordinates is None')
-
 
 
 				tweeto['doc_type'] = "tweet"
@@ -287,6 +350,10 @@ if __name__ == "__main__":
 	except KeyboardInterrupt:
 		streaming_api.disconnect()
 		dbnp.logout()
+
+		for k, v in l.tseriedict.items():
+		 print(k, ':', v)
+
 		print "got keyboardinterrupt"
 
 
@@ -317,3 +384,13 @@ if __name__ == "__main__":
 # this line should tweet out the message to your account's 
 # timeline. The "Read and Write" setting is on https://dev.twitter.com/apps
 #api.update_status('Updating using OAuth authentication via Tweepy!')
+
+
+
+
+# ----- Code Samples
+# mystrptime = time.strptime(tweeto['created_at'],'%a %b %d %H:%M:%S +0000 %Y')
+# ts = time.strftime('%Y-%m-%d %H:%M:%S', mystrptime)
+# print('Converted type & Time:',type(ts), ts)
+
+
