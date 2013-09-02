@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#python 2.7# -*- coding: utf-8 -*-
+# Tserie will be created on the server DB!
 import os
 import re
 import operator
@@ -51,7 +51,7 @@ class StdOutListener(StreamListener):
 
 	'''
 
-	def settings( self, dbnp = None, queue= None ):
+	def settings( self, dbnp = None, gtserie=None, queue= None ):
 	    self.errorCount = 0 # trial!
 	    self.queue = queue
 	    self.tweet_count  = 0
@@ -59,6 +59,11 @@ class StdOutListener(StreamListener):
 	    self.db = dbnp
 
 	    self.starttime = datetime.datetime.utcnow() # This should be able to given as a parameter to calculate same thing from the DB for any start time.
+
+	    strofstarttime = self.starttime.strftime("%Y%m%d%H%M") # "%Y_%m_%d_%H_%M_%S"
+	    collectionname = strofstarttime + 'box' + str(boxlen) + 'tframe'+ str(tseriemin)
+	    print('collectionname:', collectionname) # collection = db['test-collection']
+
 	    self.mytimedelta = datetime.timedelta(0, 60*tseriemin)
 	    self.timestep = 0
 
@@ -307,12 +312,15 @@ def mongo_login():
 	logging.info("Connecting to MongoDB")
 
 	# print('dir_mongoclient', dir(mclient))
-	mclient = pm.MongoClient(servername, port)
+	try:
+		mclient = pm.MongoClient(servername, port)
 
-	dbnp = mclient.geotwitter
-	dbnp.authenticate(username, passw)
+		dbnp = mclient.geotwitter
+		dbnp.authenticate(username, passw)
 
-	logging.info("...connected")
+		logging.info("...connected")
+	except pymongo.errors.ConnectionFailure, e:
+		print "Could not connect to MongoDB:" #" %s" % e 
 
 	
 	return dbnp 
@@ -332,13 +340,15 @@ if __name__ == "__main__":
 
 
 		dbnp = mongo_login()
-		print(dbnp.collection_names())
+		print('DB Names:',dbnp.collection_names())
 
 		print('\n---------------',dbnp, dir(dbnp))#help(dbnp),'\n----------------------')
 
 		gtweets = dbnp.geotweets
 
-		l.settings(gtweets)
+		gtserie = dbnp.geotserie
+
+		l.settings(gtweets, gtserie)
 
 		#gtweets.find(one)
 		
