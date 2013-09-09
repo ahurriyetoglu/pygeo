@@ -64,7 +64,7 @@ try:
 	#[db.texts.insert({'text': line}) for line in lines]
 
 	#Load map and reduce functions
-	map = Code(open('wordMap.js','r').read())
+	map = Code(open('wordMap.js','r').read()) # 'wordMap.js' should be 'tweetsMap.js' -- For the below line as well!
 	reduce = Code(open('wordReduce.js','r').read())
 
 

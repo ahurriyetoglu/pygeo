@@ -82,7 +82,7 @@ class StdOutListener(StreamListener):
 		try:
 			tweeto = json.loads(data)
 			# print('Not Parsed tweet:',data) # data is string type
-			print('Tweet parsed.')
+			#print('Tweet parsed.')
 		except Exception:
 			print("Failed to parse tweet data..")
 			tweeto = None
@@ -94,51 +94,24 @@ class StdOutListener(StreamListener):
 			if tweeto.has_key('id') and tweeto.has_key("text") and tweeto.has_key("coordinates"):
 				#print('Parsed Tweet:',tweeto)
 				# print(dir(tweeto), tweeto.keys())
-				print("%s: %s" % (tweeto['user']['screen_name'].encode('UTF-8'), tweeto['text'].encode('UTF-8')))
+				#print("%s: %s" % (tweeto['user']['screen_name'].encode('UTF-8'), tweeto['text'].encode('UTF-8')))
 				if tweeto['coordinates'] != None:
-					ins_id = self.db.insert(tweeto)
-					print('Inserted with ID:', ins_id)
-					if tweeto['coordinates']['type'] == 'Point':
-						print('It is a POINT ...')
-						print('Coord[coord], Type & Value:', type(tweeto['coordinates']['coordinates']), tweeto['coordinates']['coordinates'])
-						print('Coord[coord][0] type & value:', type(tweeto['coordinates']['coordinates'][0]), type(tweeto['coordinates']['coordinates'][1]))
-						print(tweeto['coordinates']['coordinates'][0], tweeto['coordinates']['coordinates'][1])
+					tweeto["created_at"] = datetime.datetime.strptime(tweeto['created_at'],'%a %b %d %H:%M:%S +0000 %Y')					
 
-						lon = tweeto['coordinates']['coordinates'][0]
-						lat = tweeto['coordinates']['coordinates'][1]
+					ins_id = self.db.insert(tweeto)
+					#print('Inserted with ID:', ins_id)
+					if tweeto['coordinates']['type'] == 'Point':
+						#print('It is a POINT ...')
+						#print('Coord[coord], Type & Value:', type(tweeto['coordinates']['coordinates']), tweeto['coordinates']['coordinates'])
+						#print('Coord[coord][0] type & value:', type(tweeto['coordinates']['coordinates'][0]), type(tweeto['coordinates']['coordinates'][1]))
+						print(tweeto['coordinates']['coordinates'][0], tweeto['coordinates']['coordinates'][1])
+						print(tweeto['created_at'])
+
+						#lon = tweeto['coordinates']['coordinates'][0]
+						#lat = tweeto['coordinates']['coordinates'][1]
 					else:
 						print('Not a Point:', tweeto['coordinates']['type'])
 
-					mystrptime = time.strptime(tweeto['created_at'],'%a %b %d %H:%M:%S +0000 %Y')					
-					dt = datetime.datetime.fromtimestamp(mktime(mystrptime))
-					print('tweet datetime type & value:', type(dt), dt)
-
-					lonlatbox = 'lon'+str(int(lon/boxlen))+'lat'+str(int(lat/boxlen))
-
-					if dt > self.nexttime:
-						self.currenttime = self.nexttime
-						self.nexttime = self.nexttime + self.mytimedelta
-						self.timestep += 1
-						print(self.tseriedict)
-						for k,v in self.tseriedict.items(): # for all boxes
-							if type(v) == list:
-								v.append(0) # add zero to all geo-boxes for the new time step
-
-
-					if lonlatbox not in self.tseriedict:
-						self.tseriedict[lonlatbox] = [0] * (self.timestep + 1) # 0 should be time serie point. 1 is addition for the length of the list.
-					
-					self.tseriedict[lonlatbox][self.timestep] += 1 # first 1 should be the time serie point. Second 1 distracted since to list index start from 0.
-					
-					# print ('Tweet count:', self.tweet_count, type(tweeto['coordinates']), dir(tweeto['coordinates']),tweeto['coordinates']['type'], tweeto['coordinates']['coordinates'])
-
-				else:
-					print('coordinates is None')
-
-
-				tweeto['doc_type'] = "tweet"
-
-				self.tweet_count += 1
 
 		else:
 			print("Received a response which is not a tweet or without Geo!")
