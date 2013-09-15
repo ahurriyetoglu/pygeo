@@ -89,6 +89,7 @@ class StdOutListener(StreamListener):
 			exit()
 
 		#print('Dir of Data:', type(data),dir(data))
+		tweeto2 = {}
 
 		if tweeto:
 			if tweeto.has_key('id') and tweeto.has_key("text") and tweeto.has_key("coordinates"):
@@ -96,21 +97,86 @@ class StdOutListener(StreamListener):
 				# print(dir(tweeto), tweeto.keys())
 				#print("%s: %s" % (tweeto['user']['screen_name'].encode('UTF-8'), tweeto['text'].encode('UTF-8')))
 				if tweeto['coordinates'] != None:
-					tweeto["created_at"] = datetime.datetime.strptime(tweeto['created_at'],'%a %b %d %H:%M:%S +0000 %Y')					
+					tweeto2["created_at"] = datetime.datetime.strptime(tweeto['created_at'],'%a %b %d %H:%M:%S +0000 %Y')
 
-					ins_id = self.db.insert(tweeto)
-					#print('Inserted with ID:', ins_id)
-					if tweeto['coordinates']['type'] == 'Point':
+
+					if tweeto["contributors"] != None:
+						tweeto2["contributors"] = tweeto["contributors"]
+
+					tweeto2["coordinates"] = tweeto["coordinates"]
+
+					if tweeto["entities"] != None:
+						for k, v in tweeto["entities"].items():
+							if ((type(v) == list) and len(v)>0):
+								if "entities" not in tweeto2:
+									tweeto2["entities"] = {}
+								tweeto2["entities"][k] = v
+
+					if tweeto["favorite_count"] > 0:
+						tweeto2["favorite_count"] = tweeto["favorite_count"]
+
+					if tweeto["favorited"] != False:
+						tweeto2["favorited"] = tweeto["favorited"]
+
+					tweeto2["filter_level"] = tweeto["filter_level"]
+
+					# do not insert geo:deprecated!
+					# id does not inserted. id_str inserted instead
+					tweeto2["id_str"] = tweeto["id_str"]
+
+					if tweeto["in_reply_to_screen_name"] != None:
+						tweeto2["in_reply_to_screen_name"] = tweeto["in_reply_to_screen_name"]
+
+					#in_reply_to_status_id not used, use str version
+					if tweeto["in_reply_to_status_id"] != None:
+						tweeto2["in_reply_to_status_id"] = tweeto["in_reply_to_status_id"]
+
+					#in_reply_to_user_id not used, use str version
+					if tweeto["in_reply_to_user_id_str"] != None:
+						tweeto2["in_reply_to_user_id_str"] = tweeto["in_reply_to_user_id_str"]
+
+					tweeto2["lang"] = tweeto["lang"]
+
+					if tweeto["place"] != None:
+						for k, v in tweeto["place"].items():
+							if (v !=None) and ((type(v) == bool and v != False) or (type(v) == int and v > 0) or ((type(v) == list or type(v) == dict) and len(v)>0)):
+								if "place" not in tweeto2:
+									tweeto2["place"] = {}
+								tweeto2["place"][k] = v
+
+					if tweeto["retweet_count"] > 0:
+						tweeto2["retweet_count"] = tweeto["retweet_count"]
+
+					if tweeto["retweeted"] != False:
+						tweeto2["retweeted"] = tweeto["retweeted"]
+
+					tweeto2["source"] = tweeto["source"]
+					tweeto2["text"] = tweeto["text"]
+
+					if tweeto["truncated"] != False:
+						tweeto2["truncated"] = tweeto[""]
+
+					if tweeto["user"] != None:
+						for k, v in tweeto["user"].items():
+							if (v !=None) and ((type(v) == bool and v != False) or (type(v) == int and v > 0) or ((type(v) == list or type(v) == dict) and len(v)>0)):
+								if "user" not in tweeto2:
+									tweeto2["user"] = {}
+								tweeto2["user"][k] = v
+
+
+					ins_id = self.db.insert(tweeto2)
+					print('Inserted with ID:', ins_id)
+					if tweeto2['coordinates']['type'] == 'Point':
 						#print('It is a POINT ...')
 						#print('Coord[coord], Type & Value:', type(tweeto['coordinates']['coordinates']), tweeto['coordinates']['coordinates'])
 						#print('Coord[coord][0] type & value:', type(tweeto['coordinates']['coordinates'][0]), type(tweeto['coordinates']['coordinates'][1]))
-						print(tweeto['coordinates']['coordinates'][0], tweeto['coordinates']['coordinates'][1])
-						print(tweeto['created_at'])
+						print(tweeto2['coordinates']['coordinates'][0], tweeto2['coordinates']['coordinates'][1])
+						print(tweeto2['created_at'])
 
 						#lon = tweeto['coordinates']['coordinates'][0]
 						#lat = tweeto['coordinates']['coordinates'][1]
 					else:
-						print('Not a Point:', tweeto['coordinates']['type'])
+						print('Not a Point:', tweeto2['coordinates']['type'])
 
 
 		else:
@@ -291,9 +357,9 @@ def mongo_login():
 		dbnp.authenticate(username, passw)
 
 		logging.info("...connected")
-	except pymongo.errors.ConnectionFailure, e:
-		print "Could not connect to MongoDB:" #" %s" % e 
-
+	except Exception as e:
+		print('an exception occurred!')
+		print(str(e))
 	
 	return dbnp 
 
